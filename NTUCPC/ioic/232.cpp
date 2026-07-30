@@ -1,0 +1,34 @@
+
+#include <bits/stdc++.h>
+#define int long long
+#define pii pair<int, int>
+#define F first
+#define S second
+#define IO ios::sync_with_stdio(0), cin.tie(0)
+#define FOR(i, a, b) for (int i = a; i <= b; i++)
+#define all(x) x.begin(), x.end()
+#define siz(x) (int)x.size()
+using namespace std;
+void dbg() {;}
+template<class T, class ...U>
+void dbg(T a, U ...b) {cout << a << (sizeof...(b) ? ", " : "  "); dbg(b...);}
+void ent() {cout << "\n";}
+
+const int mod = 998244353; // 1e9 + 7;
+/// ------- Initialization End -------
+
+const int N = 1;
+
+signed main() {
+    IO;
+    
+    int n, x, ans = 0;
+    cin >> n;
+    for (int i = 1; i <= n; i++) {
+        cin >> x;
+        ans ^= x;
+    }
+    cout << (ans == 0 ? "YessssssssssS\n" : "Nooooooooooooo0\n");
+    
+    return 0;
+}
