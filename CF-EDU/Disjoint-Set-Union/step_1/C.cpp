@@ -1,0 +1,79 @@
+// #pragma GCC optimize("Ofast,unroll-loops,O3")
+#include <bits/stdc++.h>
+#define int long long
+#define pii pair<int,int>
+#define F first
+#define S second
+#define IOS ios::sync_with_stdio(0); cin.tie(0);
+#define SZ(x) (int)(x).size()
+#define ALL(x) (x).begin(),(x).end()
+#define loop(i,a,b) for(int i=(a);i<=(b);i++)
+using namespace std;
+/// ------- Initialization End -------
+
+int n;
+int pts[200005];
+int dsu[200005];
+int sz[200005];
+
+int find(int x)
+{
+    if (dsu[x] == x) return x;
+    return find(dsu[x]);
+}
+
+void join(int x, int y)
+{
+    x = find(x), y = find(y);
+    if (x == y) return;
+    if (sz[x] < sz[y]) swap(x, y);
+    dsu[y] = dsu[x];
+    pts[y] -= pts[x];
+    sz[x] += sz[y];
+}
+
+void add(int x, int val)
+{
+    x = find(x);
+    pts[x] += val;
+}
+
+int get(int x)
+{
+    if (dsu[x] == x)
+        return pts[x];
+    return pts[x] + get(dsu[x]);
+}
+
+signed main()
+{
+    ios::sync_with_stdio(0);
+    cin.tie(0);
+
+    int q;
+    cin >> n >> q;
+
+    loop(i, 1, n) {
+        dsu[i] = i;
+        sz[i] = i;
+        pts[i] = 0;
+    }
+    
+    int a, b;
+    string s;
+    while (q--) {
+        cin >> s;
+        if (s[0] == 'j') {
+            cin >> a >> b;
+            join(a, b);
+        } else if (s[0] == 'a') {
+            cin >> a >> b;
+            add(a, b);
+        } else {
+            cin >> a;
+            cout << get(a) << "\n";
+        }
+    }
+    
+    return 0;
+}
