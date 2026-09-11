@@ -1,114 +1,143 @@
 #include <bits/stdc++.h>
-#define int long long
+// #define int long long
 #define pii pair<int, int>
 #define F first
 #define S second
 #define all(x) x.begin(), x.end()
-#define siz(x) (int)x.size()
+#define sz(x) (int)x.size()
+#define pb push_back
 #define FOR(i, a, b) for(int i = a; i <= b; ++i)
 #define IO ios::sync_with_stdio(0), cin.tie(0)
 using namespace std;
-// ---------------------------------------------
+void debug() { cerr << endl; }
+template <typename T, typename ...U>
+void debug(T i, U ...j) { cerr << i << ' ', debug(j...); }
+#define test(x...) debug("[" + string(x) + "]", x)
 
-struct RangeSet { // [l, r)
-  set<pii> st;
-  int cnt = 0;
-  void cut(int x) {
-    auto it = st.lower_bound({x + 1, -1});
-    if (it == st.begin()) return;
-    auto [l, r] = *prev(it);
-    if (l >= x || x >= r) return;
-    st.erase(prev(it));
-    st.insert({l, x});
-    st.insert({x, r});
-  }
-  bool inside(int l, int r) {
-    // [l, r) is included in st
-    auto it = st.lower_bound({l + 1, -1});
-    if (it != st.begin() && prev(it)->first <= l && r <= prev(it)->second) return true;
-    return false;
-  }
-  vector<pii> split(int l, int r) {
-    // remove and return ranges in [l, r)
-    cut(l), cut(r);
-    vector<pii> res;
-    while (true) {
-      auto it = st.lower_bound({l, -1});
-      if (it == st.end() || r <= it->first) break;
-      cnt -= it->second - it->first;
-      res.push_back(*it), st.erase(it);
-    }
-    return res;
-  }
-  void insert(int l, int r) {
-    // add range [l, r), [l, r) not in st, needed to split(l, r) before
-    auto it = st.lower_bound({l, r});
-    if (it != st.begin() && prev(it)->second == l) {
-      cnt -= prev(it)->second - prev(it)->first;
-      l = prev(it)->first, st.erase(prev(it));
-    }
-    if (it != st.end() && r == it->first) {
-      cnt -= it->second - it->first;
-      r = it->second, st.erase(it);
-    }
-    cnt += r - l;
-    st.insert({l, r});
-  }
-  bool count(int x) {
-    auto it = st.lower_bound({x + 1, -1});
-    return it != st.begin() && prev(it)->first <= x && x < prev(it)->second;
-  }
+struct Node {
+    vector<pii> edges;
 };
 
-const int N = 300005;
-const int mod = 998244353;
+struct DSU {
+    vector<int> parent, size, tag;
+    vector<tuple<int, int, int, int, int>> history;
+    DSU(int n) {
+        parent.resize(n + 1);
+        size.resize(n + 1, 1);
+        tag.resize(n + 1, 0);
+        for (int i = 1; i <= n; i++) parent[i] = i;
+    }
+    int find(int x) {
+        if (parent[x] == x) return x;
+        return find(parent[x]);
+    }
+    bool merge(int x, int y) {
+        x = find(x), y = find(y);
+        if (x == y) return false;
+        if (size[x] < size[y]) swap(x, y);
+        history.pb({x, y, parent[y], tag[x], size[x]});
+        parent[y] = x;
+        size[x] += size[y];
+        return true;
+    }
+    void add_tag(int head, int val) {
+        tag[head] += val;
+    }
+    void undo() {
+        auto [px, py, parent_py, base, sz_x] = history.back();
+        parent[py] = parent_py;
+        size[px] = sz_x;
+        int delta = tag[px] - base;
+        // tag[px] = base;
+        tag[py] += delta;
+        history.pop_back();
+    }
+};
 
-vector<pair<pii, int>> G[N], G2[N];
-vector<RangeSet> res;
+const int N = 400005;
+vector<Node> seg;
+vector<int> nums;
 
-void dfs(int v, int l, int r) {
-    res[v].split(l, r); res[v].insert(l, r);
-    pair<pii, int> p = {{l, -1}, -1};
-    int id = lower_bound(G[v].begin(), G[v].end(), p) - G[v].begin();
-    while (id < siz(G[v])) {
-        auto &[edge, u] = G[v][id]; id += 1;
-        auto &[edge_l, edge_r] = edge;
-        if (max(l, edge_l) < min(r, edge_r)) break;
-        if (u == v) continue;
-        if (res[u].inside(l, r) == false)
-            dfs(u, max(l, edge_l), min(r, edge_r));
-        id += 1;
+void split(int node, int l, int r, int ql, int qr, pii edge) {
+    if (ql <= l && r <= qr) {
+        // add edge to node
+        seg[node].edges.pb(edge);
+        return;
+    }
+    int mid = (l + r) >> 1;
+    if (qr <= mid)
+        split(2 * node, l, mid, ql, qr, edge);
+    else if (mid + 1 <= ql)
+        split(2 * node + 1, mid + 1, r, ql, qr, edge);
+    else {
+        split(2 * node, l, mid, ql, qr, edge);
+        split(2 * node + 1, mid + 1, r, ql, qr, edge);
+    }
+}
+
+void _assert(bool condition) {
+    if (!condition) {
+        exit(0);
     }
 }
 
 signed main() {
-    IO;
-    int n, m, k, v, u, l, r;
+	IO;
+	int n, m, k, v, u, l, r;
     cin >> n >> m >> k;
-    res.resize(n + 1);
-    FOR (i, 1, m) {
+    // _assert(n <= 1e5);
+    vector<pii> edges(m);
+    vector<pii> intervals(m);
+    for (int i = 0; i < m; i++) {
         cin >> v >> u >> l >> r;
-        if (v == u) continue;
-        G2[v].push_back({{l, r + 1}, u});
-        G2[u].push_back({{l, r + 1}, v});
+        nums.pb(l);
+        nums.pb(r + 1);
+        edges[i] = {v, u};
+        intervals[i] = {l, r + 1};
     }
-    FOR (i, 1, n) {
-        sort(all(G2[i]), [&](auto x, auto y) {
-            if (x.S != y.S) return x.S < y.S;
-            return x.F < y.F;
-        });
-        for (auto &[edge, u] : G2[i]) {
-            auto &[edge_l, edge_r] = edge;
-            if (! G[i].empty() && G[i].back().S == u
-                 && max(edge_l, G[i].back().F.F) < min(edge_r, G[i].back().F.S)) {
-                G[i][siz(G[i]) - 1].F.F = min(G[i][siz(G[i]) - 1].F.F, edge_l);
-                G[i][siz(G[i]) - 1].F.S = max(G[i][siz(G[i]) - 1].F.S, edge_r);
-            } else {
-                G[i].push_back({edge, u});
+    if (m == 0) {
+        for (int i = 2; i <= n; i++) {
+            cout << 0 << " \n"[i == n];
+        }
+        return 0;
+    }
+    sort(all(nums));
+    nums.resize(unique(all(nums)) - nums.begin());
+    seg.resize(4 * sz(nums) + 5);
+    int mx_k = sz(nums) - 1;
+    for (int i = 0; i < m; i++) {
+        int ql = lower_bound(all(nums), intervals[i].F) - nums.begin();
+        int qr = lower_bound(all(nums), intervals[i].S) - nums.begin();
+        _assert(1 <= ql + 1 && ql + 1 <= qr && qr <= mx_k);
+        split(1, 1, mx_k, ql + 1, qr, edges[i]);
+    }
+    // N = 2, M = 2
+    // 2 2 10
+    // 1 2 1 2
+    // 1 2 8 9
+    // [1, 3, 8, 10]
+    // [0, 1] [1, 2] [2, 3]
+    DSU dsu(n);
+    auto dfs = [&](auto self, int node, int l, int r) -> void {
+        int count = 0;
+        for (auto &[v, u] : seg[node].edges) {
+            if (dsu.merge(v, u)) {
+                count++;
             }
         }
-        sort(all(G[i]));
+        if (l == r) {
+            dsu.add_tag(dsu.find(1), nums[l] - nums[l - 1]);
+        } else {
+            int mid = (l + r) >> 1;
+            self(self, 2 * node, l, mid);
+            self(self, 2 * node + 1, mid + 1, r);
+        }
+        while (count--) {
+            dsu.undo();
+        }
+    };
+    dfs(dfs, 1, 1, mx_k);
+    for (int i = 2; i <= n; i++) {
+        cout << dsu.tag[dsu.find(i)] << " \n"[i == n];
     }
-    dfs(1, 1, k + 1);
-    FOR (i, 2, n) cout << res[i].cnt << " \n"[i == n];
 }
